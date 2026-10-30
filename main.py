@@ -1,29 +1,112 @@
 from sklearn import datasets
 import numpy as np
 
-iris = datasets.load_iris()
-U = iris.data
-Y = np.zeros((len(iris.target), 3))
-Y[np.arange(iris.target.size), iris.target] = 1
 
-# A) Write code to randomly divide the data into two sets: 
-# U_train, Y_train and U_test, Y_test. 80%
-# of the data should be in U_train and 20% should be in U_test
-rng = np.random.default_rng(seed=42)
-indices = np.arange(len(U))
-rng.shuffle(indices)
+def main():
+    iris = datasets.load_iris()
+    U = iris.data
+    Y = np.zeros((len(iris.target), 3))
+    Y[np.arange(iris.target.size), iris.target] = 1
 
-split_idx80 = int(len(U) * 0.8)
+    # A) Write code to randomly divide the data into two sets: 
+    # U_trainK, Y_trainK and U_test, Y_test. 80%
+    # of the data should be in U_trainK and 20% should be in U_test
+    rng = np.random.default_rng(seed=42)
+    indices = np.arange(len(U))
+    rng.shuffle(indices)
 
-train_indices = indices[:split_idx80]
-test_indices = indices[split_idx80:]
+    split_idx80 = int(len(U) * 0.8)
 
-U_train = U[train_indices]
-Y_train = Y[train_indices]
+    train_indices = indices[:split_idx80]
+    test_indices = indices[split_idx80:]
 
-U_test = U[test_indices]
-Y_test = Y[test_indices]
+    U_train = U[train_indices]
+    Y_train = Y[train_indices]
 
-# B) Perform classification using k nearest neighbors with k = 5, and Euclidean distance as the distance
-# metric. Report training and test accuracy
+    U_test = U[test_indices]
+    Y_test = Y[test_indices]
 
+    # B) Perform classification using k nearest neighbors with k = 5, and Euclidean distance as the distance
+    # metric. Report training and test accuracy
+    
+    Y_test_pred = K_classifier(U_test, U_train, Y_train, 5)
+    Y_train_pred = K_classifier(U_train, U_train, Y_train, 5)
+    print_results(Y_test_pred, Y_train_pred, Y_test, Y_train, "K nearest neighbors")
+    
+    # C) Perform classification on the data using a linear regression model with the pseudoinverse method. Report the training and test accuracy
+    Y_train_pred = linear_regression(U_train, U_train, Y_train)
+    Y_test_pred = linear_regression(U_test, U_train, Y_train)
+    print_results(Y_test_pred, Y_train_pred, Y_test, Y_train, "Linear Regression")
+
+
+def print_results(Y_test_pred, Y_train_pred, Y_test, Y_train, model_type):
+    test_accuracy = np.sum(Y_test_pred == np.argmax(Y_test, axis=1)) / len(Y_test)
+    train_accuracy = np.sum( Y_train_pred == np.argmax(Y_train, axis=1)) / len(Y_train)
+    print("\n")
+    print(f"Training accuracy ({model_type}):", round(train_accuracy, 3))
+    print("Test accuracy:", round(test_accuracy, 3))
+    print("\n---------------------------------------------------------")
+
+def K_classifier(U, U_trainK, Y_trainK, K):
+    # Go through Ui in U_test
+    Y_pred = []
+    for ui in U:
+        # calculate eucledian distance using U_trainK
+        distances = []
+        for j, x in enumerate(U_trainK):
+            difference = ui - x
+            current_distance = np.sqrt(np.sum(difference**2))
+            distances.append((current_distance, np.argmax(Y_trainK[j])))
+        distances.sort(key=lambda x: x[0])
+
+        classes_count = dict()
+        for neighbor in range(K):
+
+            current_class = distances[neighbor][1]
+            if current_class in classes_count:
+                classes_count[current_class] += 1
+            else:
+                classes_count[current_class] = 1
+
+        Y_pred.append(max(classes_count, key=classes_count.get))
+
+    Y_pred = np.array(Y_pred)
+    return Y_pred
+
+def linear_regression(U, U_trainL, Y_trainL):
+    ones = np.ones((U_trainL.shape[0], 1))
+
+
+
+    # Augment the matrix U
+    augmented_Utrain = np.column_stack((ones, U_trainL))
+
+    W = np.linalg.pinv(augmented_Utrain) @ Y_trainL
+
+    ones = np.ones((U.shape[0], 1))
+    augmented_U = np.column_stack((ones, U))
+
+    Y_pred = augmented_U@W
+
+    predicted_classes = np.argmax(Y_pred, axis=1)
+    return predicted_classes
+
+def logistic_regression(U, U_train, Y_train, iterations):
+    mse_history = []
+
+    ones = np.ones((U_train.shape[0], 1))
+    augmented_Utrain = np.column_stack((ones, U_train))
+    
+    W = np.zeros((augmented_Utrain.shape[1], Y_train.shape[1]))
+    for i in range(iterations):
+        Z = augmented_Utrain @ W
+        Y_pred = sigmoid(Z)
+
+        mse = np.mean((Y_train - Y_pred) ** 2)
+        mse_history.append(mse)
+
+def sigmoid(z):
+    return 1 / (1 + np.exp(-z))
+
+if __name__ == "__main__":
+    main()
