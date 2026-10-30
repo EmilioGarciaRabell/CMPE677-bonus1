@@ -1,6 +1,6 @@
 from sklearn import datasets
 import numpy as np
-
+import matplotlib.pyplot as plt
 
 def main():
     iris = datasets.load_iris()
@@ -37,6 +37,20 @@ def main():
     Y_train_pred = linear_regression(U_train, U_train, Y_train)
     Y_test_pred = linear_regression(U_test, U_train, Y_train)
     print_results(Y_test_pred, Y_train_pred, Y_test, Y_train, "Linear Regression")
+
+    # D) Perform classification using logistic regression trained with gradient descent. Show the training accuracy or MSE vs. training epoch and stop training when it appears to converge. Report training
+    # and test accuracy
+    Y_train_pred, mse_history = logistic_regression(U_train, U_train, Y_train, iterations=1000, learning_rate=0.01)
+    Y_test_pred, _ = logistic_regression(U_test, U_train, Y_train, iterations=1000, learning_rate=0.01)
+    print_results(Y_test_pred, Y_train_pred, Y_test, Y_train, "Logistic Regression")
+
+    plt.plot(range(len(mse_history)), mse_history)
+    plt.xlabel("Epoch")
+    plt.ylabel("MSE")
+    plt.title("Logistic Regression Training MSE")
+
+    plt.savefig("mse_history.png")
+    plt.close()     
 
 
 def print_results(Y_test_pred, Y_train_pred, Y_test, Y_train, model_type):
@@ -91,7 +105,7 @@ def linear_regression(U, U_trainL, Y_trainL):
     predicted_classes = np.argmax(Y_pred, axis=1)
     return predicted_classes
 
-def logistic_regression(U, U_train, Y_train, iterations):
+def logistic_regression(U, U_train, Y_train, iterations, learning_rate):
     mse_history = []
 
     ones = np.ones((U_train.shape[0], 1))
@@ -104,6 +118,16 @@ def logistic_regression(U, U_train, Y_train, iterations):
 
         mse = np.mean((Y_train - Y_pred) ** 2)
         mse_history.append(mse)
+        gradient = (augmented_Utrain.T @ (Y_pred - Y_train)) / len(Y_train)
+        W = W - learning_rate * gradient
+    ones = np.ones((U.shape[0], 1))
+    augmented_U = np.column_stack((ones, U))
+
+    Z = augmented_U @ W
+    Y_pred = sigmoid(Z)
+    predicted_classes = np.argmax(Y_pred, axis=1)
+    return predicted_classes, mse_history
+
 
 def sigmoid(z):
     return 1 / (1 + np.exp(-z))
